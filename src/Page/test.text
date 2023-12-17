@@ -1,0 +1,91 @@
+import React, { useEffect, useRef, useState } from "react";
+import { Button, Modal } from "antd";
+import * as tmImage from "@teachablemachine/image";
+
+const Teachable = () => {
+  const URL = "https://teachablemachine.withgoogle.com/models/M9i5hLrrw/";
+
+  let model, labelContainer, maxPredictions;
+  const webcam = new tmImage.Webcam(200, 200, true);
+  const webcamRef = useRef(null);
+  const [predictions, setPredictions] = useState([]);
+  const [openModal, setIsOpenModal] = useState(false);
+
+  const init = async () => {
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
+
+    model = await tmImage.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
+
+    await webcam.setup();
+    await webcam.play();
+    console.log(webcam);
+
+    webcamRef.current.srcObject = webcam.canvas.captureStream();
+    loop();
+  };
+
+  const loop = async () => {
+    webcam.update();
+    await predict();
+    window.requestAnimationFrame(loop);
+  };
+
+  const predict = async () => {
+    const prediction = await model.predict(webcam.canvas);
+    const highProbabilityPrediction = prediction.find(
+      (p) => p.probability >= 0.9
+    );
+    if (highProbabilityPrediction && !openModal) {
+        setIsOpenModal(true);
+        webcam.pause();
+      }
+    setPredictions(prediction);
+  };
+
+  useEffect(() => {
+    init();
+  }, []);
+  const handleCancel = async() =>{
+    setIsOpenModal(false)
+    if (!openModal) {
+        await webcam.setup();
+        await webcam.play();
+        loop();
+      }
+    
+  }
+
+  const handleOk = () =>{
+    setIsOpenModal(false)
+  }
+  return (
+    <div>
+      <Button onClick={init}>Start</Button>
+      <div id="label-container">
+        {/* {predictions.length > 0 && <h2>{predictions[0].className}</h2>} */}
+        {predictions.map((prediction, i) => (
+          <div key={i}>
+            {prediction.className}: {prediction.probability.toFixed(2)}
+          </div>
+        ))}
+      </div>
+      <video
+        className="mx-auto rounded-sm"
+        ref={webcamRef}
+        autoPlay
+        playsInline
+        muted
+        width="300"
+        height="200"
+      ></video>
+
+      <Modal open={openModal} onCancel={handleCancel} onOk={handleOk}>
+        <h2>this is the text </h2>
+      </Modal>
+    </div>
+  );
+};
+
+export default Teachable;

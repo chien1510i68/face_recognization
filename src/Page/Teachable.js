@@ -2,31 +2,32 @@ import React, { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
 import * as tmImage from "@teachablemachine/image";
 
-const Demo = () => {
-  const modelURL = "https://teachablemachine.withgoogle.com/models/M9i5hLrrw/model.json";
-  const metadataURL = "https://teachablemachine.withgoogle.com/models/M9i5hLrrw/metadata.json";
+const Teachable = () => {
+  const URL = "https://teachablemachine.withgoogle.com/models/M9i5hLrrw/";
 
+  let maxPredictions;
   const webcamRef = useRef(null);
-  const videoRef = useRef(null);
   const [predictions, setPredictions] = useState([]);
   const [openModal, setOpenModal] = useState(false);
   const [person, setPerson] = useState("");
   const [model, setModel] = useState(null);
+  const webcam = new tmImage.Webcam(200, 200, true);
+  // const webcam = new tmImage.Webcam(200, 200, true);
+  const fetchModal = async () => {
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
 
-  useEffect(() => {
-    const fetchModel = async () => {
-      setModel(await tmImage.load(modelURL, metadataURL));
-    };
+    setModel(await tmImage.load(modelURL, metadataURL));
+    maxPredictions = model && model.getTotalClasses();
+  };
 
-    fetchModel();
-  }, [modelURL, metadataURL]);
-
-  const initWebcam = async () => {
-    const webcam = new tmImage.Webcam(200, 200, true);
+  const init = async () => {
     await webcam.setup();
     await webcam.play();
     webcamRef.current = webcam;
-    videoRef.current.srcObject = webcamRef.current.canvas.captureStream();
+    webcamRef.current.srcObject = webcam.canvas.captureStream();
+
+    console.log("webcam", webcam);
     loop();
   };
 
@@ -34,8 +35,8 @@ const Demo = () => {
     if (webcamRef.current) {
       webcamRef.current.update();
       await predict();
-      requestAnimationFrame(loop);
     }
+    window.requestAnimationFrame(loop);
   };
 
   const predict = async () => {
@@ -53,15 +54,20 @@ const Demo = () => {
     }
   };
 
+  useEffect(() => {
+    // Load the model when the component mounts
+
+    fetchModal();
+  }, []);
+
   const handleStart = () => {
-    initWebcam();
+    // Start the webcam and loop when the user clicks the "Start" button
+    init();
   };
 
   const handleCancel = () => {
     setOpenModal(false);
-    if (webcamRef.current) {
-      webcamRef.current.play();
-    }
+    init();
   };
 
   const handleOk = () => {
@@ -78,9 +84,9 @@ const Demo = () => {
           </div>
         ))}
       </div>
-      <video className="" ref={videoRef} width="300" height="200" />
+      <video className="" ref={webcamRef} width="300" height="200" />
 
-      <Modal visible={openModal} onCancel={handleCancel} onOk={handleOk}>
+      <Modal open={openModal} onCancel={handleCancel} onOk={handleOk}>
         <h2 className="text-center font-normal text-green-500 text-xl">
           Hãy xác nhận bạn có phải là {person}{" "}
         </h2>
@@ -89,4 +95,4 @@ const Demo = () => {
   );
 };
 
-export default Demo;
+export default Teachable;
